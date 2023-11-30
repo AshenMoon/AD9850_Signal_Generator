@@ -3,7 +3,8 @@
 //
 // Author:    Dean Souleles, KK4DAS
 // Revision:  1.0,  25-Jan-2020
-//
+// Modified by: AshenMoon
+// Revision   1.1,  30-Nov-2023
 // Description:
 // 
 // Signal generator outputs a sine wave from DC to ~62 MHz using and Arduino Nano and Analog Devices AD9850 Direct Digital Synthesizer
@@ -53,6 +54,22 @@
 char debugmsg[40];
 #endif
 
+#define USE_ARRoW_POINTER // enable Arrow Pointer instead of the increment prompt
+
+#ifdef USE_ARRoW_POINTER
+// Define Up/Down Arrow figure to be used as an increment pointer
+byte arrowUpDown[] = {
+  B00100,
+  B01110,
+  B11111,
+  B00000,
+  B00000,
+  B11111,
+  B01110,
+  B00100
+};
+#define INCREMENT_POINTER 0 // Arrow Pointer Symbol ID
+#endif
 
 #define CALLSIGN "KK4DAS"
 #define STARTUP_FREQUENCY 1000
@@ -67,7 +84,7 @@ char debugmsg[40];
 #define RESET 11          // Pin 11 - connect to reset pin (RST) 
 
 //////////////////////////////////////////////////////////////////////
-// Rotary Encoder Pin Numbers                                        //
+// Frequency Rotary Encoder Pin Numbers                             //
 //////////////////////////////////////////////////////////////////////
 #define ENCODER_A    2    // Encoder pin A  D2 (interrupt pin)
 #define ENCODER_B    3    // Encoder pin B  D3 (interrupt pin)
@@ -172,6 +189,44 @@ void displayFrequency(int_fast32_t fq) {
 };
 
 void displayIncrement(long increment) {
+#ifdef USE_ARRoW_POINTER
+  // Display Increment as Arrow Pointer
+  lcd.setCursor(0,1);
+  lcd.print("                ");
+
+  #ifdef DEBUG
+    sprintf(debugmsg, "Increment: %ld",increment);
+    Serial.println(debugmsg);
+  #endif
+
+  // Calculate Increment Pointer position
+  int cursorPos = 9;
+  switch (increment) {
+    case 10:
+      cursorPos = 9; //"   10 Hz";
+      break; 
+    case 100:
+      cursorPos = 8; //hertz = "  100 Hz";
+      break; 
+    case 1000:
+      cursorPos = 6; //hertz = "   1K Hz";
+      break; 
+    case 10000:
+      cursorPos = 5; //hertz = "  10K Hz";
+      break; 
+    case 100000:
+      cursorPos = 4; //hertz = " 100K Hz";
+      break; 
+    case 1000000:
+      cursorPos = 2; //hertz = "   1M Hz";
+      break; 
+  }
+  
+  // Display Increment Pointer
+  lcd.setCursor(cursorPos,1);
+  lcd.write(INCREMENT_POINTER); 
+#else
+  // Display Increment as prompt text
   String hertz = "        "; // tune step display
 
   #ifdef DEBUG
@@ -213,9 +268,8 @@ void displayIncrement(long increment) {
       
   lcd.setCursor(4,1);
   lcd.print(hertz); 
-
+#endif
 }
-
 
 //////////////////////////////////////////////////////////////////////
 //                                                                  //
@@ -347,8 +401,11 @@ void setupDDS() {
 //////////////////////////////////////////////////////////////////////
 void setupDisplay() {
   lcd.init();
-//  lcd.backlight();
-  lcd.noBacklight();
+#ifdef USE_ARRoW_POINTER
+  lcd.createChar(INCREMENT_POINTER, arrowUpDown);
+#endif
+  lcd.backlight();
+  lcd.setCursor(0,0);
   lcd.print(CALLSIGN);
   lcd.print(": AD9580");
   lcd.setCursor(0,1);
